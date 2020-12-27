@@ -1,30 +1,8 @@
-import sequtils
-
 type
   ByteOrder*      = enum
   # byte order representation
     boLE          = 0x00
     boBE          = 0xff
-  BitMask*        = enum
-    # enums uses int64 in background so we pass bmEight as a first
-    bmEight       = 0xFF_00_00_00_00_00_00_00'i64
-    bmFirst       = 0xff'u8
-    bmSecond      = 0xff_00'u16
-    bmThird       = 0xff_00_00'u32
-    bmFourth      = 0xFF_00_00_00'u32
-    bmFifth       = 0xFF_00_00_00_00'u64
-    bmSixth       = 0xFF_00_00_00_00_00'u64
-    bmSeventh     = 0xFF_00_00_00_00_00_00'u64
-  ByteShift*    = enum
-    bsOne        = 8 * 1
-    bsTwo        = 8 * 2
-    bsThree      = 8 * 3
-    bsFour       = 8 * 4
-    bsFive       = 8 * 5
-    bsSix        = 8 * 6
-    bsSeven      = 8 * 7
-    bsEight      = 8 * 8
-
   Integer*          = uint8|uint16|uint32|uint64|uint|int8|int16|int32|int64|int
   ArrayView*        = array[1,uint8]|array[2,uint8]|array[4,uint8]|array[8,uint8]
   Single*           = byte|char|uint8|int8
@@ -43,24 +21,28 @@ proc reorder*(val: var Integer): void =
   when val.sizeof == 1:
     discard
   elif T.sizeof == 2:
-    val = val shr bsOne.T or
-          val shl bsOne.T
+    var buffer: array[2,uint8]
+    copyMem(addr buffer[0],addr val, 2)
+    val = buffer[1].T shl 0 or
+          buffer[0].T shl 8
   elif T.sizeof == 4:
-    val = val shr bsThree.T or
-          val shr bsOne.T and bmSecond.T or # 3 -> 2 mask 2
-          val shl bsOne.T and bmThird.T or # 2 -> 3 mask 3
-          val shl bsThree.T
+    var buffer: array[4,uint8]
+    copyMem(addr buffer[0],addr val, 4)
+    val = buffer[3].T shl 0 or
+          buffer[2].T shl 8 or
+          buffer[1].T shl 16 or
+          buffer[0].T shl 24
   else:
-    val = (val shr bsSeven.T) or                               # 8 -> 1
-          (val shr bsFive.T and bmSecond.T) or       # 7 -> 2 mask 2nd
-          (val shr bsThree.T and bmThird.T) or       # 6 -> 3 mask 3th
-          (val shr bsOne.T  and bmFourth.T) or       # 5 -> 4 mask 4th   
-          (val shl bsOne.T  and bmFifth.T) or
-          (val shl bsThree.T and bmSixth.T) or
-          (val shl bsFive.T and bmSeventh.T) or
-          (val shl bsSeven.T)
-
-
+    var buffer: array[8,uint8]
+    copyMem(addr buffer[0],addr val, 8)
+    val = buffer[7].T shl 0 or
+          buffer[6].T shl 8 or
+          buffer[5].T shl 16 or
+          buffer[4].T shl 24 or
+          buffer[3].T shl 32 or
+          buffer[2].T shl 40 or
+          buffer[1].T shl 48 or
+          buffer[0].T shl 56
 
 proc toView*(val: Integer): ArrayView  {. noSideEffect, gcsafe .} =
     when val.sizeof == 1:
