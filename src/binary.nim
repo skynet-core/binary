@@ -9,14 +9,11 @@ type
 
 
 const
-  val = uint16(0xff00)
+  hostBO = cast[uint8](uint16(0xff00)).ByteOrder
   wordSize* = pointer.sizeof
 
-proc hostByteOrder*(): ByteOrder {. noSideEffect, gcsafe .} = 
-    result = (cast[array[2,uint8]](val))[0].ByteOrder
 
-
-proc reorder*(val: var Integer): void =
+proc reorder*(val: var Integer): void {. gcsafe .} =
   type T = Integer
   when val.sizeof == 1:
     discard
@@ -98,14 +95,14 @@ proc bin*[T](src: T): seq[char] {. noSideEffect, gcsafe .} =
   copyMem(addr result[0], src.unsafeAddr, result.len)
 
 
-proc fromBin*[T](dest: var T, src: openArray[char]): void =
+proc fromBin*[T](dest: var T, src: openArray[char]): void {. gcsafe .} =
   copyMem(addr dest, src[0].unsafeAddr, src.len)
 
 
-proc toEntity*[T](src: openArray[char]): T =
+proc toEntity*[T](src: openArray[char]): T {. noSideEffect, gcsafe .} =
   copyMem(addr result, src[0].unsafeAddr, T.sizeof)
 
-proc swap*[T](target: var T): void =
+proc swap*[T](target: var T): void {. gcsafe .} =
     var 
       targetPtr = cast[uint](addr target)
       numWords = (T.sizeof / wordSize).int
@@ -121,9 +118,9 @@ proc swap*[T](target: var T): void =
 
 
 
-proc hton*[T](val: var T): void = 
-  if hostByteOrder() == boLE:
+proc hton*[T](val: var T): void {. gcsafe .} = 
+  if hostBO == boLE:
     val.swap()
 
-proc ntoh*[T](val: var T): void =
+proc ntoh*[T](val: var T): void {. gcsafe .} =
   hton(val)
